@@ -130,11 +130,14 @@ install_llmsandbox_with_uv() {
     # 使用uv创建虚拟环境
     uv venv
     
+    # 定义腾讯pip源
+    PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/"
+    
     # 安装llm-sandbox和相关依赖
-    uv pip install llm-sandbox
-    uv pip install 'llm-sandbox[docker]'
-    uv pip install fastmcp
-    uv pip install supergateway
+    uv pip install --index-url "$PIP_INDEX_URL" llm-sandbox
+    uv pip install --index-url "$PIP_INDEX_URL" 'llm-sandbox[docker]'
+    uv pip install --index-url "$PIP_INDEX_URL" fastmcp
+    uv pip install --index-url "$PIP_INDEX_URL" supergateway
     
     echo "llmsandbox安装完成（使用uv虚拟环境）"
 }
