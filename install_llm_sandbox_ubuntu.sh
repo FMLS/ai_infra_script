@@ -36,75 +36,52 @@ install_docker() {
         return 0
     fi
     
-    # 卸载旧版本
-    apt-get remove -y docker docker-engine docker.io containerd runc || true
+    # 检查snap是否可用
+    if ! command_exists snap; then
+        echo "错误：snap未安装，无法使用snap安装Docker"
+        exit 1
+    fi
     
-    # 更新包索引
-    apt-get update
+    # 使用snap安装Docker
+    echo "使用snap安装Docker..."
+    snap install docker
     
-    # 安装依赖
-    apt-get install -y \
-        ca-certificates \
-        curl \
-        gnupg \
-        lsb-release
+    # 等待Docker服务启动
+    echo "等待Docker服务启动..."
+    sleep 5
     
-    # 添加Docker官方GPG密钥
-    mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    # 验证Docker是否正常运行
+    if ! docker info >/dev/null 2>&1; then
+        echo "警告：Docker服务可能未正常运行，尝试手动启动..."
+        systemctl start snap.docker.dockerd
+        systemctl enable snap.docker.dockerd
+    fi
     
-    # 设置仓库
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-    
-    # 更新包索引
-    apt-get update
-    
-    # 安装Docker
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    
-    # 启动并启用Docker
-    systemctl start docker
-    systemctl enable docker
-    
-    # 添加当前用户到docker组
+    # 添加当前用户到docker组（snap版本）
     if [[ -n "$SUDO_USER" ]]; then
         usermod -aG docker "$SUDO_USER"
         echo "已将用户 $SUDO_USER 添加到docker组"
     fi
     
-    echo "Docker安装完成"
+    echo "Docker安装完成（使用snap）"
 }
 
-# 安装Python3
-install_python3() {
-    echo "开始安装Python3..."
+# 安装uv包管理器
+install_uv() {
+    echo "开始安装uv包管理器..."
     
-    if command_exists python3 && command_exists pip3; then
-        echo "Python3和pip3已安装"
-        echo "Python版本: $(python3 --version)"
+    if command_exists uv; then
+        echo "uv已安装，版本: $(uv --version)"
         return 0
     fi
     
-    apt-get update
-    apt-get install -y python3 python3-pip python3-venv
+    # 安装uv
+    curl -LsSf https://astral.sh/uv/install.sh | sh
     
-    echo "Python3安装完成"
-    echo "Python版本: $(python3 --version)"
-    echo "pip版本: $(pip3 --version)"
-}
-
-# 安装llmsandbox
-install_llmsandbox() {
-    echo "开始安装llmsandbox..."
+    # 确保uv在PATH中
+    export PATH="/root/.local/bin:$PATH"
     
-    # 直接使用系统pip安装，跳过升级步骤
-    pip3 install llm-sandbox --break-system-packages
-    pip3 install 'llm-sandbox[docker]' --break-system-packages
-    pip3 install fastmcp --break-system-packages
-    
-    echo "llmsandbox安装完成"
+    echo "uv安装完成"
 }
 
 # 安装Node.js和npm
@@ -118,13 +95,48 @@ install_npm() {
         return 0
     fi
     
-    # 使用NodeSource仓库安装最新LTS版本
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-    apt-get install -y nodejs
+    # 检查snap是否可用
+    if ! command_exists snap; then
+        echo "错误：snap未安装，无法使用snap安装Node.js"
+        exit 1
+    fi
     
-    echo "Node.js和npm安装完成"
-    echo "Node.js版本: $(node --version)"
-    echo "npm版本: $(npm --version)"
+    # 使用snap安装Node.js（包含npm）
+    echo "使用snap安装Node.js和npm..."
+    snap install node --classic
+    
+    # 验证安装
+    if command_exists node && command_exists npm; then
+        echo "Node.js和npm安装完成（使用snap）"
+        echo "Node.js版本: $(node --version)"
+        echo "npm版本: $(npm --version)"
+    else
+        echo "错误：Node.js和npm安装失败"
+        exit 1
+    fi
+}
+
+# 使用uv安装llmsandbox
+install_llmsandbox_with_uv() {
+    echo "开始安装llmsandbox（使用uv）..."
+    
+    # 确保uv在PATH中
+    export PATH="/root/.local/bin:$PATH"
+    
+    # 创建项目目录
+    mkdir -p /opt/llm-sandbox
+    cd /opt/llm-sandbox
+    
+    # 使用uv创建虚拟环境
+    uv venv
+    
+    # 安装llm-sandbox和相关依赖
+    uv pip install llm-sandbox
+    uv pip install 'llm-sandbox[docker]'
+    uv pip install fastmcp
+    uv pip install supergateway
+    
+    echo "llmsandbox安装完成（使用uv虚拟环境）"
 }
 
 # 拉取Docker镜像
@@ -152,17 +164,38 @@ pull_docker_images() {
     echo "Docker镜像拉取完成"
 }
 
+# 创建uv版本的systemd服务
+create_uv_systemd_service() {
+    echo "创建uv版本的systemd服务..."
+    
+    # 创建新的服务文件
+    cat > /etc/systemd/system/llmsandbox.service << 'EOF'
+[Unit]
+Description=LLM Sandbox MCP Server (uv)
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/llm-sandbox
+Environment=PATH=/opt/llm-sandbox/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/opt/llm-sandbox/.venv/bin/python -m llm_sandbox.mcp_server.server
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/llm-sandbox.log
+StandardError=append:/var/log/llm-sandbox.log
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    echo "uv版本systemd服务创建完成"
+}
+
 # 设置systemd服务
 setup_systemd_service() {
     echo "开始设置systemd服务..."
-    
-    # 复制服务文件
-    if [[ -f "llmsandbox.service" ]]; then
-        cp llmsandbox.service /etc/systemd/system/
-    else
-        echo "错误：找不到 llmsandbox.service 文件"
-        exit 1
-    fi
     
     # 重新加载systemd配置
     systemctl daemon-reload
@@ -192,7 +225,7 @@ setup_systemd_service() {
 
 # 主安装流程
 main() {
-    echo "开始安装LLM Sandbox..."
+    echo "开始安装LLM Sandbox（使用uv）..."
     
     check_root
     check_ubuntu
@@ -204,19 +237,26 @@ main() {
     
     # 安装组件
     install_docker
-    install_python3
+    install_uv
     install_npm
-    install_llmsandbox
+    install_llmsandbox_with_uv
     pull_docker_images
+    create_uv_systemd_service
     setup_systemd_service
     
-    echo "LLM Sandbox安装完成！"
+    echo "LLM Sandbox安装完成（使用uv虚拟环境）！"
+    echo "安装路径: /opt/llm-sandbox"
+    echo "虚拟环境: /opt/llm-sandbox/.venv"
+    echo ""
     echo "您可以使用以下命令管理服务："
     echo "  启动: sudo systemctl start llmsandbox"
     echo "  停止: sudo systemctl stop llmsandbox"
     echo "  重启: sudo systemctl restart llmsandbox"
     echo "  状态: sudo systemctl status llmsandbox"
     echo "  日志: sudo journalctl -u llmsandbox -f"
+    echo ""
+    echo "手动激活虚拟环境："
+    echo "  source /opt/llm-sandbox/.venv/bin/activate"
     
     if [[ -n "$SUDO_USER" ]]; then
         echo "注意：为了使docker组更改生效，您可能需要重新登录或运行："
