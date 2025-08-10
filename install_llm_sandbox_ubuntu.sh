@@ -99,10 +99,7 @@ install_python3() {
 install_llmsandbox() {
     echo "开始安装llmsandbox..."
     
-    # 升级pip
-    pip3 install --upgrade pip --break-system-packages
-    
-    # 安装llm-sandbox和相关依赖
+    # 直接使用系统pip安装，跳过升级步骤
     pip3 install llm-sandbox --break-system-packages
     pip3 install 'llm-sandbox[docker]' --break-system-packages
     pip3 install fastmcp --break-system-packages
