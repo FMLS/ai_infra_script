@@ -182,7 +182,9 @@ Type=simple
 User=root
 WorkingDirectory=/opt/llm-sandbox
 Environment=PATH=/opt/llm-sandbox/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStart=/opt/llm-sandbox/.venv/bin/python -m llm_sandbox.mcp_server.server
+Environment=PYTHONPATH=/opt/llm-sandbox/.venv/lib/python3.11/site-packages
+ExecStart=/opt/llm-sandbox/.venv/bin/python -c "from llm_sandbox.mcp_server.server import main; main()"
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10
 StandardOutput=append:/var/log/llm-sandbox.log
