@@ -1,0 +1,17 @@
+[Unit]
+Description=LLM Sandbox MCP Server
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root
+ExecStart=/usr/bin/npx -y supergateway --stdio "python3 -m llm_sandbox.mcp_server.server"
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/llm-sandbox.log
+StandardError=append:/var/log/llm-sandbox.log
+
+[Install]
+WantedBy=multi-user.target
