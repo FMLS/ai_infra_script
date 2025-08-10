@@ -137,7 +137,6 @@ install_llmsandbox_with_uv() {
     uv pip install --index-url "$PIP_INDEX_URL" llm-sandbox
     uv pip install --index-url "$PIP_INDEX_URL" 'llm-sandbox[docker]'
     uv pip install --index-url "$PIP_INDEX_URL" fastmcp
-    uv pip install --index-url "$PIP_INDEX_URL" supergateway
     
     echo "llmsandbox安装完成（使用uv虚拟环境）"
 }
