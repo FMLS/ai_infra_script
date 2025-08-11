@@ -193,7 +193,7 @@ Requires=docker.service
 Type=simple
 User=root
 WorkingDirectory=/opt/llm-sandbox
-ExecStart=supergateway --stdio "/opt/llm-sandbox/.venv/bin/python -m llm_sandbox.mcp_server.server"
+ExecStart=supergateway --streamableHttp --stdio "/opt/llm-sandbox/.venv/bin/python -m llm_sandbox.mcp_server.server"
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10
@@ -205,6 +205,24 @@ WantedBy=multi-user.target
 EOF
     
     echo "uv版本systemd服务创建完成"
+}
+
+# 创建logrotate配置文件
+create_logrotate_config() {
+    echo "创建logrotate配置文件..."
+    
+    cat > /etc/logrotate.d/llm-sandbox << 'EOF'
+/var/log/llm-sandbox.log {
+    daily
+    rotate 7
+    compress
+    missingok
+    notifempty
+    copytruncate
+}
+EOF
+    
+    echo "logrotate配置文件创建完成"
 }
 
 # 设置systemd服务
@@ -257,6 +275,7 @@ main() {
     install_llmsandbox_with_uv
     pull_docker_images
     create_uv_systemd_service
+    create_logrotate_config
     setup_systemd_service
     
     echo "LLM Sandbox安装完成（使用uv虚拟环境）！"
