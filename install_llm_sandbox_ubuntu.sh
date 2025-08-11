@@ -183,7 +183,7 @@ User=root
 WorkingDirectory=/opt/llm-sandbox
 Environment=PATH=/opt/llm-sandbox/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 Environment=PYTHONPATH=/opt/llm-sandbox/.venv/lib/python3.11/site-packages
-ExecStart=/opt/llm-sandbox/.venv/bin/python -c "llm_sandbox.mcp_server.server"
+ExecStart=/opt/llm-sandbox/.venv/bin/python -m "llm_sandbox.mcp_server.server"
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10
