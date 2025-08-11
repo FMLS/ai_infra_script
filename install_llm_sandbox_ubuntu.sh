@@ -116,6 +116,18 @@ install_npm() {
     fi
 }
 
+install_supergateway() {
+    echo "开始安装supergateway..."
+    
+    if command_exists supergateway; then
+        echo "supergateway已安装"
+        return 0
+    fi
+    npm install -g supergateway
+    
+    echo "supergateway安装完成"
+}
+
 # 使用uv安装llmsandbox
 install_llmsandbox_with_uv() {
     echo "开始安装llmsandbox（使用uv）..."
@@ -181,9 +193,7 @@ Requires=docker.service
 Type=simple
 User=root
 WorkingDirectory=/opt/llm-sandbox
-Environment=PATH=/opt/llm-sandbox/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-Environment=PYTHONPATH=/opt/llm-sandbox/.venv/lib/python3.11/site-packages
-ExecStart=/opt/llm-sandbox/.venv/bin/python -m "llm_sandbox.mcp_server.server"
+ExecStart=supergateway --stdio "/opt/llm-sandbox/.venv/bin/python -m llm_sandbox.mcp_server.server"
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10
@@ -243,6 +253,7 @@ main() {
     install_docker
     install_uv
     install_npm
+    install_supergateway
     install_llmsandbox_with_uv
     pull_docker_images
     create_uv_systemd_service
