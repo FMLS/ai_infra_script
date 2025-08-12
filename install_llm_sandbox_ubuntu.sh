@@ -146,7 +146,7 @@ install_llmsandbox_with_uv() {
     PIP_INDEX_URL="https://mirrors.cloud.tencent.com/pypi/simple/"
     
     # 安装llm-sandbox和相关依赖
-    uv pip install ./llm_sandbox-0.3.13-py3-none-any.whl
+    uv pip install ./components/llm_sandbox-0.3.13-py3-none-any.whl
     uv pip install --index-url "$PIP_INDEX_URL" 'llm-sandbox[docker]'
     uv pip install --index-url "$PIP_INDEX_URL" fastmcp
     
