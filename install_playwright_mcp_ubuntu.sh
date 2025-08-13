@@ -56,7 +56,7 @@ pull_playwright_image() {
 # 启动Playwright MCP服务
 start_playwright_service() {
     echo "正在启动Playwright MCP服务..."
-    docker run -d --name playwright-mcp --rm --init -p8931:8931 mcr.microsoft.com/playwright/mcp --port 8931
+    docker run -d --name playwright-mcp --rm --init -p8931:8931 --log-opt max-size=10m --log-opt max-file=3 mcr.microsoft.com/playwright/mcp --port 8931
     echo "服务已启动，监听端口8931"
 }
 
